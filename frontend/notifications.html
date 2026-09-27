@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journey Alerts & Notifications | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container" style="max-width:800px;">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Notifications & System Alerts</h1>
+                <p class="page-desc">Stay updated on ticket confirmations, waitlist promotions, and train schedule updates</p>
+            </div>
+            <div>
+                <button onclick="markAllRead()" class="btn btn-outline btn-sm">Mark All as Read</button>
+            </div>
+        </div>
+
+        <div id="notif-alert"></div>
+
+        <div id="notifications-list">
+            <div class="card" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                Loading notifications...
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            setupNavbar('notifications');
+            loadNotifications(user.userId);
+        });
+
+        async function loadNotifications(userId) {
+            const container = document.getElementById('notifications-list');
+            try {
+                const res = await api(`/notifications?userId=${userId}`);
+                if (res.success && res.notifications) {
+                    if (res.notifications.length === 0) {
+                        container.innerHTML = `
+                            <div class="card" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                                🔔 No notifications at this time.
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = '';
+                    res.notifications.forEach(n => {
+                        const isUnread = !n.isRead;
+                        html += `
+                            <div class="card" style="margin-bottom:1rem; border-left: 4px solid ${isUnread ? 'var(--accent-orange)' : '#cbd5e1'}; background: ${isUnread ? '#fffaf0' : '#ffffff'};">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                                    <div>
+                                        <div style="font-size:0.95rem; font-weight: ${isUnread ? '700' : '500'}; color:var(--text-main);">
+                                            ${n.message}
+                                        </div>
+                                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem;">
+                                            Timestamp: ${n.createdAt || 'Just now'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        ${isUnread ? '<span class="badge" style="background:#fed7aa; color:#c2410c;">NEW</span>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                }
+            } catch (err) {
+                showAlert('notif-alert', err.message, 'danger');
+            }
+        }
+
+        async function markAllRead() {
+            const user = getCurrentUser();
+            if (!user) return;
+            try {
+                const res = await api(`/notifications/read-all?userId=${user.userId}`, 'POST');
+                if (res.success) {
+                    loadNotifications(user.userId);
+                    const badge = document.getElementById('nav-notif-badge');
+                    if (badge) badge.style.display = 'none';
+                }
+            } catch (err) {
+                showAlert('notif-alert', err.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

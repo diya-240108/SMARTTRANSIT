@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration Portal | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="admin.html" class="nav-brand">
+            <div class="brand-icon" style="background-color:#fbbf24; color:#0f2537;">AP</div>
+            <div>
+                <span class="brand-title">ADMIN PORTAL</span>
+                <span class="brand-sub">Smart Transit Operational Desk</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Operations & Fleet Management Desk</h1>
+                <p class="page-desc">System analytics, train fleet management, reservation charts, and registered users</p>
+            </div>
+            <div>
+                <button onclick="openAddTrainModal()" class="btn btn-primary">+ Add New Train</button>
+            </div>
+        </div>
+
+        <div id="admin-alert"></div>
+
+        <!-- Admin Navigation Tabs -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:2px solid var(--border-light); padding-bottom:0.75rem; flex-wrap:wrap;">
+            <button onclick="switchTab('reports')" id="tab-reports" class="btn btn-navy btn-sm">Analytics & Reports</button>
+            <button onclick="switchTab('fleet')" id="tab-fleet" class="btn btn-outline btn-sm">Train Fleet</button>
+            <button onclick="switchTab('chart')" id="tab-chart" class="btn btn-outline btn-sm">Reservation Chart</button>
+            <button onclick="switchTab('users')" id="tab-users" class="btn btn-outline btn-sm">Registered Users</button>
+            <button onclick="switchTab('bookings')" id="tab-bookings" class="btn btn-outline btn-sm">All Bookings</button>
+        </div>
+
+        <!-- 1. REPORTS TAB -->
+        <div id="section-reports">
+            <!-- Metrics Grid -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">TOTAL USERS</div>
+                    <div id="rep-users" style="font-size:1.8rem; font-weight:800; color:var(--primary-navy);">0</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">TOTAL TRAINS</div>
+                    <div id="rep-trains" style="font-size:1.8rem; font-weight:800; color:var(--primary-navy);">0</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">TOTAL BOOKINGS</div>
+                    <div id="rep-bookings" style="font-size:1.8rem; font-weight:800; color:var(--primary-navy);">0</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">CONFIRMED</div>
+                    <div id="rep-confirmed" style="font-size:1.8rem; font-weight:800; color:var(--success);">0</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">WAITLISTED</div>
+                    <div id="rep-waitlisted" style="font-size:1.8rem; font-weight:800; color:var(--warning);">0</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700;">CANCELLED</div>
+                    <div id="rep-cancelled" style="font-size:1.8rem; font-weight:800; color:var(--danger);">0</div>
+                </div>
+                <div class="card" style="text-align:center; background:#e0f2fe; border-color:#bae6fd;">
+                    <div style="font-size:0.8rem; color:#0369a1; font-weight:700;">FLEET OCCUPANCY</div>
+                    <div id="rep-occupancy" style="font-size:1.8rem; font-weight:800; color:#0284c7;">0%</div>
+                </div>
+                <div class="card" style="text-align:center; background:#fff7ed; border-color:#fed7aa;">
+                    <div style="font-size:0.8rem; color:var(--accent-orange); font-weight:700;">TOTAL REVENUE</div>
+                    <div id="rep-revenue" style="font-size:1.8rem; font-weight:800; color:var(--accent-orange);">₹0.00</div>
+                </div>
+            </div>
+
+            <!-- Two Column Row: Most Booked Routes & Class-wise Availability -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-bottom:1.5rem;">
+                <!-- Most Booked Routes Table -->
+                <div class="card" style="margin-bottom:0;">
+                    <div class="card-title">🔥 Most-Booked Corridors & Routes</div>
+                    <div class="table-responsive">
+                        <table class="styled-table" style="font-size:0.9rem;">
+                            <thead>
+                                <tr>
+                                    <th>Origin → Destination</th>
+                                    <th>Confirmed Bookings</th>
+                                    <th>Revenue Generated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rep-routes-body">
+                                <tr><td colspan="3" style="text-align:center; padding:1.25rem;">Loading routes...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Class-wise Seat Availability Table -->
+                <div class="card" style="margin-bottom:0;">
+                    <div class="card-title">💺 Fleet-Wide Class Availability & Occupancy</div>
+                    <div class="table-responsive">
+                        <table class="styled-table" style="font-size:0.9rem;">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Total Capacity</th>
+                                    <th>Booked Seats</th>
+                                    <th>Available</th>
+                                    <th>Occupancy %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rep-class-body">
+                                <tr><td colspan="5" style="text-align:center; padding:1.25rem;">Loading class data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Train-wise Bookings & Revenue Table -->
+            <div class="card">
+                <div class="card-title">📊 Train-Wise Occupancy, Bookings & Revenue Performance</div>
+                <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Train Number</th>
+                                <th>Train Name</th>
+                                <th>Route</th>
+                                <th>Capacity</th>
+                                <th>Booked Seats</th>
+                                <th>Occupancy Rate</th>
+                                <th>Total Bookings</th>
+                                <th>Revenue Generated</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rep-trainwise-body">
+                            <tr><td colspan="8" style="text-align:center; padding:1.5rem;">Loading metrics...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. FLEET TAB -->
+        <div id="section-fleet" style="display:none;">
+            <div class="card">
+                <div class="card-title">🚆 Active Train Fleet & Schedule Management</div>
+                <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Train Name</th>
+                                <th>Route</th>
+                                <th>Timings</th>
+                                <th>Date</th>
+                                <th>Capacities (1A/2A/3A/SL)</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fleet-table-body">
+                            <tr><td colspan="8" style="text-align:center; padding:1.5rem;">Loading fleet...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. RESERVATION CHART TAB -->
+        <div id="section-chart" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 Reservation Chart Generation</div>
+                <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1.25rem;">
+                    <label style="font-weight:600;">Select Train:</label>
+                    <select id="chart-train-select" class="form-control" style="width:auto; min-width:280px;" onchange="loadReservationChart(this.value)">
+                        <option value="">-- Choose a train --</option>
+                    </select>
+                    <button onclick="loadReservationChart(document.getElementById('chart-train-select').value)" class="btn btn-navy btn-sm">Refresh Chart</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Coach</th>
+                                <th>Seat #</th>
+                                <th>Berth</th>
+                                <th>Passenger Name</th>
+                                <th>Class</th>
+                                <th>PNR</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chart-table-body">
+                            <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Select a train to view the reservation chart.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. USERS TAB -->
+        <div id="section-users" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+                    <div class="card-title" style="margin-bottom:0;">👥 Registered Passenger Accounts</div>
+                    <input type="text" id="user-search-input" onkeyup="searchUsers(this.value)" class="form-control" placeholder="Search by name, username, or email" style="width:280px;">
+                </div>
+                <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Full Name</th>
+                                <th>Username</th>
+                                <th>Category</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Registered On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr><td colspan="7" style="text-align:center; padding:1.5rem;">Loading users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ALL BOOKINGS TAB -->
+        <div id="section-bookings" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+                    <div class="card-title" style="margin-bottom:0;">📑 All System Bookings</div>
+                    <select id="booking-status-filter" onchange="loadAllBookings(this.value)" class="form-control" style="width:auto;">
+                        <option value="ALL">All Statuses</option>
+                        <option value="CONFIRMED">Confirmed Only</option>
+                        <option value="WAITLIST">Waitlist Only</option>
+                        <option value="CANCELLED">Cancelled Only</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>PNR</th>
+                                <th>User ID</th>
+                                <th>Train</th>
+                                <th>Journey Date</th>
+                                <th>Class</th>
+                                <th>Fare</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-bookings-body">
+                            <tr><td colspan="8" style="text-align:center; padding:1.5rem;">Loading system bookings...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD TRAIN MODAL -->
+    <div id="add-train-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+        <div class="card" style="max-width:650px; width:90%; max-height:90vh; overflow-y:auto; margin:0 auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="color:var(--primary-navy);">Add New Train to Fleet</h3>
+                <button onclick="closeAddTrainModal()" class="btn btn-outline btn-sm">✕</button>
+            </div>
+            <form onsubmit="submitNewTrain(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Train Number</label>
+                        <input type="text" id="add-num" class="form-control" placeholder="e.g. 12626" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Train Name</label>
+                        <input type="text" id="add-name" class="form-control" placeholder="e.g. Kerala Express" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Source Station</label>
+                        <input type="text" id="add-src" class="form-control" placeholder="e.g. New Delhi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Destination Station</label>
+                        <input type="text" id="add-dst" class="form-control" placeholder="e.g. Trivandrum" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Departure Time</label>
+                        <input type="text" id="add-dept" class="form-control" placeholder="e.g. 08:00 PM" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Arrival Time</label>
+                        <input type="text" id="add-arr" class="form-control" placeholder="e.g. 02:30 PM" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Journey Date</label>
+                        <input type="date" id="add-date" class="form-control" required value="2026-10-01">
+                    </div>
+                </div>
+                <div style="font-weight:600; font-size:0.9rem; margin-top:0.5rem; margin-bottom:0.25rem;">Capacities (Number of Seats):</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>1A Seats</label>
+                        <input type="number" id="add-cap-1a" class="form-control" value="4" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>2A Seats</label>
+                        <input type="number" id="add-cap-2a" class="form-control" value="6" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>3A Seats</label>
+                        <input type="number" id="add-cap-3a" class="form-control" value="12" required min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>SL Seats</label>
+                        <input type="number" id="add-cap-sl" class="form-control" value="20" required min="1">
+                    </div>
+                </div>
+                <div style="font-weight:600; font-size:0.9rem; margin-top:0.5rem; margin-bottom:0.25rem;">Base Fares (₹):</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>1A Fare</label>
+                        <input type="number" id="add-fare-1a" class="form-control" value="2500" required>
+                    </div>
+                    <div class="form-group">
+                        <label>2A Fare</label>
+                        <input type="number" id="add-fare-2a" class="form-control" value="1800" required>
+                    </div>
+                    <div class="form-group">
+                        <label>3A Fare</label>
+                        <input type="number" id="add-fare-3a" class="form-control" value="1200" required>
+                    </div>
+                    <div class="form-group">
+                        <label>SL Fare</label>
+                        <input type="number" id="add-fare-sl" class="form-control" value="480" required>
+                    </div>
+                </div>
+                <div style="text-align:right; margin-top:1rem;">
+                    <button type="button" onclick="closeAddTrainModal()" class="btn btn-outline" style="margin-right:0.5rem;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Train & Seed Seats</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        let allFleet = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const admin = getCurrentAdmin();
+            if (!admin) {
+                alert("Administrator access required.");
+                window.location.href = 'login.html';
+                return;
+            }
+            setupNavbar('admin');
+            loadReports();
+            loadFleet();
+            loadUsers();
+            loadAllBookings();
+        });
+
+        function switchTab(tab) {
+            ['reports', 'fleet', 'chart', 'users', 'bookings'].forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    sec.style.display = 'block';
+                    btn.className = 'btn btn-navy btn-sm';
+                } else {
+                    sec.style.display = 'none';
+                    btn.className = 'btn btn-outline btn-sm';
+                }
+            });
+        }
+
+        async function loadReports() {
+            try {
+                const res = await api('/admin/reports');
+                if (res.success && res.reports) {
+                    const r = res.reports;
+                    document.getElementById('rep-users').textContent = r.totalUsers;
+                    document.getElementById('rep-trains').textContent = r.totalTrains;
+                    document.getElementById('rep-bookings').textContent = r.totalBookings;
+                    document.getElementById('rep-confirmed').textContent = r.confirmedTickets;
+                    document.getElementById('rep-waitlisted').textContent = r.waitlistedPassengers;
+                    document.getElementById('rep-cancelled').textContent = r.cancelledTickets;
+                    document.getElementById('rep-occupancy').textContent = `${r.overallOccupancyRate || 0}%`;
+                    document.getElementById('rep-revenue').textContent = `₹${r.totalRevenue.toFixed(2)}`;
+
+                    // 1. Most-Booked Routes Table
+                    let routesHtml = '';
+                    if (r.mostBookedRoutes && r.mostBookedRoutes.length > 0) {
+                        r.mostBookedRoutes.forEach(rt => {
+                            routesHtml += `
+                                <tr>
+                                    <td><strong>${rt.source} → ${rt.destination}</strong></td>
+                                    <td><span class="badge badge-confirmed">${rt.bookingCount} Bookings</span></td>
+                                    <td><strong>₹${rt.totalRevenue.toFixed(2)}</strong></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    document.getElementById('rep-routes-body').innerHTML = routesHtml || '<tr><td colspan="3" style="text-align:center;">No route bookings yet</td></tr>';
+
+                    // 2. Class-Wise Availability & Occupancy Table
+                    let classHtml = '';
+                    if (r.classAvailability && r.classAvailability.length > 0) {
+                        r.classAvailability.forEach(c => {
+                            const occColor = c.occupancyPercent >= 80 ? 'var(--danger)' : (c.occupancyPercent >= 40 ? 'var(--warning)' : 'var(--success)');
+                            classHtml += `
+                                <tr>
+                                    <td><strong>${c.travelClass}</strong></td>
+                                    <td>${c.totalCapacity}</td>
+                                    <td>${c.bookedSeats}</td>
+                                    <td><span style="color:var(--success); font-weight:700;">${c.availableSeats}</span></td>
+                                    <td><strong style="color:${occColor};">${c.occupancyPercent}%</strong></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    document.getElementById('rep-class-body').innerHTML = classHtml || '<tr><td colspan="5" style="text-align:center;">No class inventory data</td></tr>';
+
+                    // 3. Train-Wise Bookings, Occupancy & Revenue Table
+                    let twHtml = '';
+                    r.trainWiseBookings.forEach(tw => {
+                        const occColor = tw.occupancyPercent >= 80 ? 'var(--danger)' : (tw.occupancyPercent >= 40 ? 'var(--warning)' : 'var(--success)');
+                        twHtml += `
+                            <tr>
+                                <td><strong>${tw.trainNumber}</strong></td>
+                                <td>${tw.trainName}</td>
+                                <td style="font-size:0.85rem; color:var(--text-muted);">${tw.route || '-'}</td>
+                                <td>${tw.totalCapacity || 0}</td>
+                                <td>${tw.bookedSeats || 0}</td>
+                                <td><span style="font-weight:700; color:${occColor};">${tw.occupancyPercent || 0}%</span></td>
+                                <td>${tw.bookingCount}</td>
+                                <td><strong>₹${tw.revenue.toFixed(2)}</strong></td>
+                            </tr>
+                        `;
+                    });
+                    document.getElementById('rep-trainwise-body').innerHTML = twHtml || '<tr><td colspan="8" style="text-align:center;">No data available</td></tr>';
+                }
+            } catch (err) {
+                showAlert('admin-alert', err.message, 'danger');
+            }
+        }
+
+        async function loadFleet() {
+            try {
+                const res = await api('/admin/trains');
+                if (res.success && res.trains) {
+                    allFleet = res.trains;
+                    populateChartDropdown(res.trains);
+                    renderFleetTable(res.trains);
+                }
+            } catch (err) {
+                showAlert('admin-alert', err.message, 'danger');
+            }
+        }
+
+        function populateChartDropdown(trains) {
+            const sel = document.getElementById('chart-train-select');
+            sel.innerHTML = '<option value="">-- Choose a train --</option>';
+            trains.forEach(t => {
+                sel.innerHTML += `<option value="${t.trainId}">${t.trainNumber} - ${t.trainName} (${t.source} → ${t.destination})</option>`;
+            });
+        }
+
+        function renderFleetTable(trains) {
+            const tbody = document.getElementById('fleet-table-body');
+            let html = '';
+            trains.forEach(t => {
+                html += `
+                    <tr>
+                        <td><strong>${t.trainNumber}</strong></td>
+                        <td>${t.trainName}</td>
+                        <td>${t.source} → ${t.destination}</td>
+                        <td>${t.departureTime} - ${t.arrivalTime}</td>
+                        <td>${t.journeyDate}</td>
+                        <td>${t.seats1a} / ${t.seats2a} / ${t.seats3a} / ${t.seatsSl}</td>
+                        <td>
+                            <select id="status-sel-${t.trainId}" class="form-control" style="width:auto; padding:0.25rem 0.5rem; font-size:0.85rem;">
+                                <option value="ON TIME" ${t.status === 'ON TIME' ? 'selected' : ''}>ON TIME</option>
+                                <option value="DELAYED" ${t.status === 'DELAYED' ? 'selected' : ''}>DELAYED</option>
+                                <option value="CANCELLED" ${t.status === 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button onclick="updateTrainStatus(${t.trainId})" class="btn btn-navy btn-sm">Update</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function updateTrainStatus(trainId) {
+            const sel = document.getElementById(`status-sel-${trainId}`);
+            const status = sel.value;
+            let delayInfo = 'On schedule';
+            if (status === 'DELAYED') {
+                delayInfo = prompt("Enter delay details (e.g. Delayed by 40 minutes):", "Delayed by 30 mins") || "Delayed";
+            } else if (status === 'CANCELLED') {
+                delayInfo = prompt("Enter cancellation reason:", "Operational reasons") || "Cancelled";
+            }
+
+            try {
+                const res = await api('/admin/trains/status', 'POST', { trainId, status, delayInfo });
+                if (res.success) {
+                    showAlert('admin-alert', `Train #${trainId} status updated to ${status}. Passengers notified!`, 'success');
+                    loadFleet();
+                }
+            } catch (err) {
+                showAlert('admin-alert', err.message, 'danger');
+            }
+        }
+
+        async function loadReservationChart(trainId) {
+            if (!trainId) return;
+            const tbody = document.getElementById('chart-table-body');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:1.5rem;">Generating chart...</td></tr>';
+            try {
+                const res = await api(`/admin/chart?trainId=${trainId}`);
+                if (res.success && res.chart) {
+                    if (res.chart.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No passengers booked for this train yet.</td></tr>';
+                        return;
+                    }
+                    let html = '';
+                    res.chart.forEach(c => {
+                        const statusClass = c.status === 'CONFIRMED' ? 'badge-confirmed' : (c.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled');
+                        html += `
+                            <tr>
+                                <td><strong>${c.coach}</strong></td>
+                                <td>${c.seatNumber > 0 ? c.seatNumber : 'WL'}</td>
+                                <td>${c.berthType}</td>
+                                <td>${c.passengerName}</td>
+                                <td>${c.travelClass}</td>
+                                <td><a href="ticket.html?pnr=${c.pnr}" style="color:var(--primary-navy); text-decoration:underline;">${c.pnr}</a></td>
+                                <td><span class="badge ${statusClass}">${c.status}</span></td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="alert alert-danger">${err.message}</td></tr>`;
+            }
+        }
+
+        async function loadUsers(query = '') {
+            try {
+                const res = await api(`/admin/users?q=${encodeURIComponent(query)}`);
+                if (res.success && res.users) {
+                    const tbody = document.getElementById('users-table-body');
+                    let html = '';
+                    res.users.forEach(u => {
+                        html += `
+                            <tr>
+                                <td>${u.userId}</td>
+                                <td><strong>${u.fullName}</strong></td>
+                                <td>@${u.username}</td>
+                                <td><span class="badge badge-ontime">${u.category}</span></td>
+                                <td>${u.email}</td>
+                                <td>${u.phone}</td>
+                                <td>${u.createdAt || 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;">No users found</td></tr>';
+                }
+            } catch (err) {
+                showAlert('admin-alert', err.message, 'danger');
+            }
+        }
+
+        function searchUsers(q) {
+            loadUsers(q);
+        }
+
+        async function loadAllBookings(status = 'ALL') {
+            try {
+                const res = await api(`/admin/bookings?status=${encodeURIComponent(status)}`);
+                if (res.success && res.bookings) {
+                    const tbody = document.getElementById('all-bookings-body');
+                    let html = '';
+                    res.bookings.forEach(b => {
+                        const statusClass = b.status === 'CONFIRMED' ? 'badge-confirmed' : (b.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled');
+                        html += `
+                            <tr>
+                                <td><strong><a href="ticket.html?pnr=${b.pnr}" style="color:var(--primary-navy);">${b.pnr}</a></strong></td>
+                                <td>User #${b.userId}</td>
+                                <td>${b.trainNumber} - ${b.trainName}</td>
+                                <td>${b.journeyDate}</td>
+                                <td>${b.travelClass}</td>
+                                <td>₹${b.totalFare.toFixed(2)}</td>
+                                <td><span class="badge ${statusClass}">${b.status}</span></td>
+                                <td>
+                                    <a href="ticket.html?pnr=${b.pnr}" class="btn btn-outline btn-sm">Inspect</a>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;">No bookings found</td></tr>';
+                }
+            } catch (err) {
+                showAlert('admin-alert', err.message, 'danger');
+            }
+        }
+
+        function openAddTrainModal() {
+            document.getElementById('add-train-modal').style.display = 'flex';
+        }
+
+        function closeAddTrainModal() {
+            document.getElementById('add-train-modal').style.display = 'none';
+        }
+
+        async function submitNewTrain(e) {
+            e.preventDefault();
+            const trainData = {
+                trainNumber: document.getElementById('add-num').value.trim(),
+                trainName: document.getElementById('add-name').value.trim(),
+                source: document.getElementById('add-src').value.trim(),
+                destination: document.getElementById('add-dst').value.trim(),
+                departureTime: document.getElementById('add-dept').value.trim(),
+                arrivalTime: document.getElementById('add-arr').value.trim(),
+                journeyDate: document.getElementById('add-date').value.trim(),
+                seats1a: parseInt(document.getElementById('add-cap-1a').value, 10),
+                seats2a: parseInt(document.getElementById('add-cap-2a').value, 10),
+                seats3a: parseInt(document.getElementById('add-cap-3a').value, 10),
+                seatsSl: parseInt(document.getElementById('add-cap-sl').value, 10),
+                fare1a: parseFloat(document.getElementById('add-fare-1a').value),
+                fare2a: parseFloat(document.getElementById('add-fare-2a').value),
+                fare3a: parseFloat(document.getElementById('add-fare-3a').value),
+                fareSl: parseFloat(document.getElementById('add-fare-sl').value),
+                status: 'ON TIME',
+                delayInfo: 'On schedule'
+            };
+
+            try {
+                const res = await api('/admin/trains/add', 'POST', trainData);
+                if (res.success) {
+                    closeAddTrainModal();
+                    showAlert('admin-alert', `Train ${trainData.trainNumber} successfully added to fleet!`, 'success');
+                    loadFleet();
+                    loadReports();
+                }
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Transit Management System | Railway Reservation Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right">
+            <!-- Populated dynamically by app.js -->
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="card" style="padding: 2.5rem; background: linear-gradient(to right, #0f2537, #1e3a5f); color: #fff; border:none; margin-bottom: 2rem;">
+            <div style="max-width: 700px;">
+                <h1 style="font-size: 2.4rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: 0.5px;">
+                    SMART TRANSIT
+                </h1>
+                <p style="font-size: 1.15rem; color: #cbd5e1; margin-bottom: 1.5rem;">
+                    Book your journey. Check trains. Manage your tickets. Experience transparent seat allocation, automatic waitlist promotion, and student/senior citizen concessions.
+                </p>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <a href="search.html" class="btn btn-primary" style="font-size: 1rem; padding: 0.75rem 1.5rem;">Search Trains</a>
+                    <a href="login.html" class="btn btn-outline" style="color: #fff; border-color: #94a3b8; padding: 0.75rem 1.5rem;">Login to Portal</a>
+                    <a href="register.html" class="btn btn-secondary" style="padding: 0.75rem 1.5rem;">Create Account</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Search Form -->
+        <div class="card">
+            <div class="card-title">🔍 Quick Train Search</div>
+            <form id="quick-search-form" onsubmit="handleQuickSearch(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="qs-source">From Station</label>
+                        <input type="text" id="qs-source" class="form-control" placeholder="e.g. Chennai or New Delhi" required value="Chennai">
+                    </div>
+                    <div class="form-group">
+                        <label for="qs-destination">To Station</label>
+                        <input type="text" id="qs-destination" class="form-control" placeholder="e.g. Coimbatore or Kolkata" required value="Coimbatore">
+                    </div>
+                    <div class="form-group">
+                        <label for="qs-date">Journey Date</label>
+                        <input type="date" id="qs-date" class="form-control" value="2026-09-25">
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">Search Available Trains</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Train Enquiry Tool -->
+        <div class="card">
+            <div class="card-title">ℹ️ Train Enquiry & Live Schedule</div>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
+                Check train route, departure timings, and current operating status by train number.
+            </p>
+            <div style="display:flex; gap:1rem; max-width:500px;">
+                <input type="text" id="enquiry-input" class="form-control" placeholder="Enter Train Number (e.g. 12604, 12952)">
+                <button onclick="handleEnquiry()" class="btn btn-navy">Enquire</button>
+            </div>
+            <div id="enquiry-result" style="margin-top:1.25rem;"></div>
+        </div>
+
+        <!-- Key System Highlights -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+            <div class="card">
+                <h3 style="color:var(--primary-navy); font-size:1.1rem; margin-bottom:0.5rem;">⚡ Automatic Seat & Coach Allocation</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem;">
+                    Deterministic seat allocation with preference support (Window, Lower Berth) with zero duplicate assignments.
+                </p>
+            </div>
+            <div class="card">
+                <h3 style="color:var(--primary-navy); font-size:1.1rem; margin-bottom:0.5rem;">🔄 FIFO Waitlist & Auto-Promotion</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem;">
+                    Waitlist ordered via standard Java Queue (LinkedList). When a ticket is cancelled, the first waiting passenger is promoted automatically.
+                </p>
+            </div>
+            <div class="card">
+                <h3 style="color:var(--primary-navy); font-size:1.1rem; margin-bottom:0.5rem;">🎓 Verified Concession Discounts</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem;">
+                    Integrated 25% discount for Students and 40% discount for Senior Citizens (60+ years) with transparent fare breakdowns.
+                </p>
+            </div>
+            <div class="card">
+                <h3 style="color:var(--primary-navy); font-size:1.1rem; margin-bottom:0.5rem;">💡 Smart Alternative Trains</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem;">
+                    When your preferred train is fully booked or cancelled, the rule-based recommendation engine suggests available alternatives on the corridor.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | 2nd Year B.E. Computer Science & Engineering Project</p>
+        <p style="font-size: 0.8rem; margin-top: 0.25rem; color: #94a3b8;">
+            Powered by Java 21, JDBC, MySQL, HTML5, CSS3, and JavaScript
+        </p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavbar('home');
+        });
+
+        function handleQuickSearch(e) {
+            e.preventDefault();
+            const src = document.getElementById('qs-source').value.trim();
+            const dst = document.getElementById('qs-destination').value.trim();
+            const dt = document.getElementById('qs-date').value.trim();
+            window.location.href = `search.html?source=${encodeURIComponent(src)}&destination=${encodeURIComponent(dst)}&date=${encodeURIComponent(dt)}`;
+        }
+
+        async function handleEnquiry() {
+            const num = document.getElementById('enquiry-input').value.trim();
+            const resultBox = document.getElementById('enquiry-result');
+            if (!num) {
+                resultBox.innerHTML = '<div class="alert alert-danger">Please enter a train number.</div>';
+                return;
+            }
+            resultBox.innerHTML = 'Fetching train information...';
+            try {
+                const res = await api(`/trains/enquiry?trainNumber=${encodeURIComponent(num)}`);
+                if (res.success && res.train) {
+                    const t = res.train;
+                    const statusClass = t.status === 'CANCELLED' ? 'badge-cancelled' : (t.status === 'DELAYED' ? 'badge-delayed' : 'badge-ontime');
+                    resultBox.innerHTML = `
+                        <div style="background:#f8fafc; border:1px solid var(--border-light); border-radius:var(--radius-sm); padding:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h4 style="font-size:1.15rem; color:var(--primary-navy);">${t.trainNumber} - ${t.trainName}</h4>
+                                <span class="badge ${statusClass}">${t.status}</span>
+                            </div>
+                            <p style="font-size:0.9rem; color:var(--text-muted); margin:0.35rem 0;">${t.delayInfo || 'Running on schedule'}</p>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.5rem; margin-top:0.75rem; font-size:0.9rem;">
+                                <div>Route: <strong>${t.source} → ${t.destination}</strong></div>
+                                <div>Departure: <strong>${t.departureTime}</strong></div>
+                                <div>Arrival: <strong>${t.arrivalTime}</strong></div>
+                                <div>Journey Date: <strong>${t.journeyDate}</strong></div>
+                            </div>
+                            <div style="margin-top:0.75rem;">
+                                <a href="search.html?source=${encodeURIComponent(t.source)}&destination=${encodeURIComponent(t.destination)}&date=${encodeURIComponent(t.journeyDate)}" class="btn btn-primary btn-sm">Check Availability & Book</a>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                resultBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

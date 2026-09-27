@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Booking History & Ticket Management</h1>
+                <p class="page-desc">Review your current and historical bookings, e-tickets, and cancellation refunds</p>
+            </div>
+            <div>
+                <a href="search.html" class="btn btn-primary">+ Book Another Ticket</a>
+            </div>
+        </div>
+
+        <div id="bookings-alert"></div>
+
+        <div class="card">
+            <!-- Filter Tabs -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1.25rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
+                <button onclick="filterStatus('ALL')" id="tab-all" class="btn btn-sm btn-navy">All Bookings</button>
+                <button onclick="filterStatus('CONFIRMED')" id="tab-confirmed" class="btn btn-sm btn-outline">Confirmed</button>
+                <button onclick="filterStatus('WAITLIST')" id="tab-waitlist" class="btn btn-sm btn-outline">Waitlisted</button>
+                <button onclick="filterStatus('CANCELLED')" id="tab-cancelled" class="btn btn-sm btn-outline">Cancelled</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>PNR</th>
+                            <th>Train</th>
+                            <th>Date</th>
+                            <th>Passengers & Seats</th>
+                            <th>Class</th>
+                            <th>Fare Paid</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table-body">
+                        <tr><td colspan="8" style="text-align:center; padding:2rem;">Loading booking history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        let allUserBookings = [];
+        let currentFilter = 'ALL';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            setupNavbar('bookings');
+            loadUserBookings(user.userId);
+        });
+
+        async function loadUserBookings(userId) {
+            try {
+                const res = await api(`/bookings/user?userId=${userId}`);
+                if (res.success && res.bookings) {
+                    allUserBookings = res.bookings;
+                    renderBookingsTable();
+                }
+            } catch (err) {
+                showAlert('bookings-alert', err.message, 'danger');
+            }
+        }
+
+        function filterStatus(status) {
+            currentFilter = status;
+            ['all', 'confirmed', 'waitlist', 'cancelled'].forEach(s => {
+                const btn = document.getElementById(`tab-${s}`);
+                if (s === status.toLowerCase()) {
+                    btn.className = 'btn btn-sm btn-navy';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline';
+                }
+            });
+            renderBookingsTable();
+        }
+
+        function renderBookingsTable() {
+            const tbody = document.getElementById('bookings-table-body');
+            const list = allUserBookings.filter(b => {
+                if (currentFilter === 'ALL') return true;
+                return b.status.toUpperCase() === currentFilter;
+            });
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">No ${currentFilter.toLowerCase()} bookings found.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            list.forEach(b => {
+                const statusClass = b.status === 'CONFIRMED' ? 'badge-confirmed' : (b.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled');
+
+                let passengersInfo = '';
+                b.passengers.forEach(p => {
+                    const seatBadge = (p.status === 'WAITLIST' || p.coach === 'WL' || p.seatNumber <= 0) 
+                        ? '<span class="badge badge-waitlist">WL</span>' 
+                        : `<span style="font-weight:700;">${p.coach}-${p.seatNumber}</span> (${p.allocatedBerth})`;
+                    passengersInfo += `<div>${p.name}: ${seatBadge}</div>`;
+                });
+
+                html += `
+                    <tr>
+                        <td><strong><a href="ticket.html?pnr=${b.pnr}" style="color:var(--primary-navy);">${b.pnr}</a></strong></td>
+                        <td>
+                            <strong>${b.trainNumber}</strong> - ${b.trainName}
+                            <div style="font-size:0.8rem; color:var(--text-muted);">${b.source} → ${b.destination}</div>
+                        </td>
+                        <td>${b.journeyDate}</td>
+                        <td style="font-size:0.85rem;">${passengersInfo}</td>
+                        <td><strong>${b.travelClass}</strong></td>
+                        <td><strong>₹${b.totalFare.toFixed(2)}</strong></td>
+                        <td><span class="badge ${statusClass}">${b.status}</span></td>
+                        <td>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                <a href="ticket.html?pnr=${b.pnr}" class="btn btn-navy btn-sm">E-Ticket</a>
+                                ${b.status === 'CONFIRMED' ? `
+                                    <button onclick="openJourneyDashboard('${b.pnr}')" class="btn btn-outline btn-sm" style="border-color:var(--accent-orange); color:var(--accent-orange); font-weight:600;">Journey Dashboard</button>
+                                ` : ''}
+                                ${b.status !== 'CANCELLED' ? `
+                                    <button onclick="cancelBooking('${b.pnr}', ${b.totalFare})" class="btn btn-danger btn-sm">Cancel</button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function openJourneyDashboard(pnr) {
+            const ticket = allUserBookings.find(b => b.pnr === pnr);
+            if (!ticket) return;
+
+            document.getElementById('jd-train').innerHTML = `
+                ${ticket.trainNumber} - ${ticket.trainName}
+                <span class="badge ${ticket.trainStatus === 'DELAYED' ? 'badge-delayed' : 'badge-ontime'}" style="margin-left:0.5rem; font-size:0.75rem;">
+                    ${ticket.trainStatus}
+                </span>
+            `;
+
+            let passList = '';
+            (ticket.passengers || []).forEach(p => {
+                passList += `
+                    <div style="background:#fff; border:1px solid var(--border-light); padding:0.65rem 0.85rem; border-radius:4px; font-size:0.85rem;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>${p.name}</strong>
+                            <span class="badge badge-confirmed">${p.status}</span>
+                        </div>
+                        <div style="color:var(--text-muted); font-size:0.8rem; margin:0.2rem 0;">
+                            ${p.age} yrs • ${p.gender} • Category: ${p.category}
+                        </div>
+                        <div style="color:var(--accent-orange); font-weight:700; font-size:0.9rem;">
+                            Coach: ${p.coach} | Seat: ${p.seatNumber > 0 ? p.seatNumber : 'WL'} ${p.allocatedBerth && p.allocatedBerth !== 'NONE' ? '(' + p.allocatedBerth + ')' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('jd-content').innerHTML = `
+                <div class="journey-timeline" style="margin: 0.75rem 0;">
+                    <div class="timeline-station">
+                        <div class="time">${ticket.departureTime}</div>
+                        <div class="city">${ticket.source}</div>
+                        <div class="date">${ticket.journeyDate}</div>
+                    </div>
+                    <div class="timeline-arrow">
+                        <span class="duration">Direct Scheduled</span>
+                        <div class="line"></div>
+                    </div>
+                    <div class="timeline-station">
+                        <div class="time">${ticket.arrivalTime}</div>
+                        <div class="city">${ticket.destination}</div>
+                        <div class="date">${ticket.journeyDate}</div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem; background:#f8fafc; padding:0.85rem; border-radius:4px; font-size:0.85rem; margin-bottom:1rem;">
+                    <div><span style="color:var(--text-muted);">PNR Number:</span> <strong style="color:var(--accent-orange);">${ticket.pnr}</strong></div>
+                    <div><span style="color:var(--text-muted);">Class:</span> <strong>${ticket.travelClass}</strong></div>
+                    <div><span style="color:var(--text-muted);">Total Fare:</span> <strong>₹${ticket.totalFare.toFixed(2)}</strong></div>
+                    <div><span style="color:var(--text-muted);">Train Status:</span> <strong>${ticket.trainStatus}</strong></div>
+                </div>
+
+                <div style="margin-bottom:1rem;">
+                    <div style="font-size:0.8rem; font-weight:700; color:var(--primary-navy); text-transform:uppercase; margin-bottom:0.4rem;">
+                        Passenger Details & Seat Allocations:
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem;">
+                        ${passList}
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+                    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Print Slip</button>
+                    <a href="ticket.html?pnr=${ticket.pnr}" class="btn btn-navy btn-sm">Full E-Ticket View</a>
+                </div>
+            `;
+
+            document.getElementById('journey-modal').style.display = 'flex';
+        }
+
+        function closeJourneyModal() {
+            document.getElementById('journey-modal').style.display = 'none';
+        }
+
+        async function cancelBooking(pnr, fare) {
+            const promptMsg = `Cancel PNR ${pnr}?\n\nOriginal Fare: ₹${fare.toFixed(2)}\nCancellation Fee: ₹100.00\nRefund to be credited: ₹${Math.max(0, fare - 100).toFixed(2)}\n\nWaitlisted passengers will be automatically promoted to this seat. Proceed?`;
+            if (!confirm(promptMsg)) return;
+
+            const user = getCurrentUser();
+            try {
+                const res = await api('/bookings/cancel', 'POST', {
+                    userId: user.userId,
+                    pnr: pnr,
+                    isAdmin: false
+                });
+
+                if (res.success) {
+                    let promoMsg = '';
+                    if (res.promotions && res.promotions.length > 0) {
+                        res.promotions.forEach(p => {
+                            promoMsg += `\n⚡ Waitlist #${p.waitlistNumber} PROMOTED: ${p.passengerName} -> Seat ${p.coach}-${p.seatNumber}!`;
+                        });
+                    }
+                    alert(`Cancellation Complete!\n\nRefund: ₹${res.refundAmount.toFixed(2)}${promoMsg}`);
+                    loadUserBookings(user.userId);
+                }
+            } catch (err) {
+                showAlert('bookings-alert', err.message, 'danger');
+            }
+        }
+    </script>
+
+    <!-- Smart Journey Dashboard Modal -->
+    <div id="journey-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:2000; align-items:center; justify-content:center; padding:1rem;">
+        <div class="card" style="max-width:680px; width:100%; max-height:90vh; overflow-y:auto; margin:0 auto; padding:1.75rem; border-left:5px solid var(--accent-orange);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <div>
+                    <span style="font-size:0.75rem; font-weight:700; color:var(--accent-orange); text-transform:uppercase; letter-spacing:0.5px;">SMART JOURNEY DASHBOARD</span>
+                    <h3 id="jd-train" style="color:var(--primary-navy); font-size:1.35rem; margin-top:0.15rem;"></h3>
+                </div>
+                <button onclick="closeJourneyModal()" class="btn btn-outline btn-sm">✕ Close</button>
+            </div>
+            <div id="jd-content"></div>
+        </div>
+    </div>
+</body>
+</html>

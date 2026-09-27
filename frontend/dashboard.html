@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passenger Dashboard | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title" id="welcome-title">Passenger Dashboard</h1>
+                <p class="page-desc" id="user-sub">Manage your rail bookings, upcoming journeys, and notifications</p>
+            </div>
+            <div>
+                <a href="search.html" class="btn btn-primary">+ Book New Ticket</a>
+            </div>
+        </div>
+
+        <div id="dash-alert"></div>
+
+        <!-- Metric Cards -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="card" style="margin-bottom:0; text-align:center;">
+                <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Confirmed Tickets</div>
+                <div id="metric-confirmed" style="font-size:2rem; font-weight:800; color:var(--success); margin:0.35rem 0;">0</div>
+            </div>
+            <div class="card" style="margin-bottom:0; text-align:center;">
+                <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Waitlisted Tickets</div>
+                <div id="metric-waitlist" style="font-size:2rem; font-weight:800; color:var(--warning); margin:0.35rem 0;">0</div>
+            </div>
+            <div class="card" style="margin-bottom:0; text-align:center;">
+                <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Total Bookings</div>
+                <div id="metric-total" style="font-size:2rem; font-weight:800; color:var(--primary-navy); margin:0.35rem 0;">0</div>
+            </div>
+            <div class="card" style="margin-bottom:0; text-align:center;">
+                <div style="font-size:0.85rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Unread Alerts</div>
+                <div id="metric-notifs" style="font-size:2rem; font-weight:800; color:var(--accent-orange); margin:0.35rem 0;">0</div>
+            </div>
+        </div>
+
+        <!-- Active / Upcoming Journey Card (Requirement 17: Journey Dashboard) -->
+        <div id="upcoming-journey-container"></div>
+
+        <!-- Recent Bookings Table -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <div class="card-title" style="margin-bottom:0;">🚆 Recent Bookings</div>
+                <a href="bookings.html" style="font-size:0.9rem; color:var(--accent-orange); font-weight:600;">View All Bookings →</a>
+            </div>
+            <div class="table-responsive">
+                <table class="styled-table">
+                    <thead>
+                        <tr>
+                            <th>PNR</th>
+                            <th>Train</th>
+                            <th>Date</th>
+                            <th>Class</th>
+                            <th>Status</th>
+                            <th>Fare</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-bookings-body">
+                        <tr><td colspan="7" style="text-align:center; padding:1.5rem;">Loading bookings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            setupNavbar('dashboard');
+            document.getElementById('welcome-title').textContent = `Welcome back, ${user.fullName}!`;
+            document.getElementById('user-sub').textContent = `Username: @${user.username} | Category: ${user.category} | Phone: ${user.phone}`;
+            loadDashboard(user.userId);
+        });
+
+        async function loadDashboard(userId) {
+            try {
+                const res = await api(`/user/dashboard?userId=${userId}`);
+                if (res.success) {
+                    // Update stats
+                    const s = res.stats;
+                    document.getElementById('metric-confirmed').textContent = s.confirmedBookings;
+                    document.getElementById('metric-waitlist').textContent = s.waitlistBookings;
+                    document.getElementById('metric-total').textContent = s.totalBookings;
+                    document.getElementById('metric-notifs').textContent = s.unreadNotifications;
+
+                    // Render Recent Bookings
+                    renderRecentBookings(res.recentBookings);
+
+                    // Render Journey Dashboard for first confirmed booking
+                    const upcoming = res.recentBookings.find(b => b.status === 'CONFIRMED');
+                    renderJourneyDashboard(upcoming);
+                }
+            } catch (err) {
+                showAlert('dash-alert', err.message, 'danger');
+            }
+        }
+
+        function renderJourneyDashboard(ticket) {
+            const container = document.getElementById('upcoming-journey-container');
+            if (!container) return;
+
+            if (!ticket) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const p = ticket.passengers && ticket.passengers.length > 0 ? ticket.passengers[0] : null;
+            const seatDisplay = p ? `${p.coach}-${p.seatNumber} (${p.allocatedBerth || 'Standard'})` : 'Assigned';
+
+            container.innerHTML = `
+                <div class="card" style="border-left: 5px solid var(--accent-orange); background: #ffffff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
+                        <div>
+                            <span style="font-size:0.8rem; font-weight:700; color:var(--accent-orange); text-transform:uppercase;">ACTIVE JOURNEY DASHBOARD</span>
+                            <h3 style="color:var(--primary-navy); font-size:1.35rem; margin-top:0.15rem;">
+                                ${ticket.trainNumber} - ${ticket.trainName}
+                            </h3>
+                        </div>
+                        <div>
+                            <span class="badge badge-confirmed">CONFIRMED</span>
+                            <span class="badge ${ticket.trainStatus === 'DELAYED' ? 'badge-delayed' : 'badge-ontime'}" style="margin-left:0.5rem;">
+                                ${ticket.trainStatus}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="journey-timeline">
+                        <div class="timeline-station">
+                            <div class="time">${ticket.departureTime}</div>
+                            <div class="city">${ticket.source}</div>
+                            <div class="date">${ticket.journeyDate}</div>
+                        </div>
+                        <div class="timeline-arrow">
+                            <span class="duration">Direct Scheduled Route</span>
+                            <div class="line"></div>
+                        </div>
+                        <div class="timeline-station">
+                            <div class="time">${ticket.arrivalTime}</div>
+                            <div class="city">${ticket.destination}</div>
+                            <div class="date">${ticket.journeyDate}</div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; background:#f8fafc; padding:1rem; border-radius:var(--radius-sm); font-size:0.9rem;">
+                        <div><span style="color:var(--text-muted);">PNR Number:</span> <strong style="color:var(--accent-orange);">${ticket.pnr}</strong></div>
+                        <div><span style="color:var(--text-muted);">Class:</span> <strong>${ticket.travelClass}</strong></div>
+                        <div><span style="color:var(--text-muted);">Departure:</span> <strong>${ticket.departureTime}</strong></div>
+                        <div><span style="color:var(--text-muted);">Arrival:</span> <strong>${ticket.arrivalTime}</strong></div>
+                    </div>
+
+                    <div style="margin-top:1rem; padding:0.85rem; background:#f1f5f9; border-radius:var(--radius-sm);">
+                        <div style="font-size:0.8rem; font-weight:700; color:var(--primary-navy); text-transform:uppercase; margin-bottom:0.4rem;">
+                            Passenger Details & Allocated Berths:
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem;">
+                            ${(ticket.passengers || []).map(ps => `
+                                <div style="background:#fff; border:1px solid var(--border-light); padding:0.5rem 0.75rem; border-radius:4px; font-size:0.85rem;">
+                                    <strong>${ps.name}</strong> (${ps.age}/${ps.gender}, ${ps.category})
+                                    <div style="color:var(--accent-orange); font-weight:700; margin-top:0.15rem;">
+                                        Coach: ${ps.coach} | Seat: ${ps.seatNumber > 0 ? ps.seatNumber : 'WL'} ${ps.allocatedBerth && ps.allocatedBerth !== 'NONE' ? '(' + ps.allocatedBerth + ')' : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Total Fare Paid: <strong>₹${ticket.totalFare.toFixed(2)}</strong></span>
+                        <a href="ticket.html?pnr=${ticket.pnr}" class="btn btn-navy btn-sm">View Full E-Ticket</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRecentBookings(bookings) {
+            const tbody = document.getElementById('recent-bookings-body');
+            if (!bookings || bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No bookings yet. <a href="search.html" style="color:var(--accent-orange);">Book your first ticket!</a></td></tr>';
+                return;
+            }
+
+            let html = '';
+            bookings.forEach(b => {
+                const statusClass = b.status === 'CONFIRMED' ? 'badge-confirmed' : (b.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled');
+                html += `
+                    <tr>
+                        <td><strong><a href="ticket.html?pnr=${b.pnr}" style="color:var(--primary-navy); text-decoration:underline;">${b.pnr}</a></strong></td>
+                        <td>${b.trainNumber} - ${b.trainName}</td>
+                        <td>${b.journeyDate}</td>
+                        <td>${b.travelClass}</td>
+                        <td><span class="badge ${statusClass}">${b.status}</span></td>
+                        <td>₹${b.totalFare.toFixed(2)}</td>
+                        <td>
+                            <a href="ticket.html?pnr=${b.pnr}" class="btn btn-outline btn-sm">E-Ticket</a>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

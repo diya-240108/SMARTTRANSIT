@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="search.html">Search Trains</a></li>
+            <li><a href="register.html" class="btn btn-primary btn-sm">Register</a></li>
+        </ul>
+    </nav>
+
+    <div class="container" style="max-width: 480px; margin-top: 3rem;">
+        <div class="card">
+            <h2 style="color:var(--primary-navy); font-size:1.5rem; text-align:center; margin-bottom:0.5rem;">Sign In</h2>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">
+                Access your railway reservation account or administration desk
+            </p>
+
+            <div id="login-alert"></div>
+
+            <!-- Role Selector Toggle -->
+            <div style="display:flex; border:1px solid var(--border-light); border-radius:var(--radius-sm); margin-bottom:1.5rem; overflow:hidden;">
+                <button type="button" id="role-user-btn" onclick="selectRole('USER')" 
+                        style="flex:1; padding:0.6rem; border:none; background:var(--primary-navy); color:#fff; font-weight:600; cursor:pointer;">
+                    Passenger Login
+                </button>
+                <button type="button" id="role-admin-btn" onclick="selectRole('ADMIN')" 
+                        style="flex:1; padding:0.6rem; border:none; background:#f1f5f9; color:var(--text-main); font-weight:600; cursor:pointer;">
+                    Admin Login
+                </button>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" class="form-control" placeholder="Enter your username" required value="rahul">
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="Enter password" required value="rahul123">
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn btn-primary" style="width:100%; margin-top:0.5rem; padding:0.75rem;">
+                    Login as Passenger
+                </button>
+            </form>
+
+            <div style="margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border-light); font-size:0.85rem; color:var(--text-muted);">
+                <strong>Sample Demo Accounts:</strong>
+                <ul style="margin:0.5rem 0 0 1.25rem; line-height:1.4;">
+                    <li>User (Normal): <code>rahul</code> / <code>rahul123</code></li>
+                    <li>User (Student - 25% Off): <code>priya</code> / <code>priya123</code></li>
+                    <li>User (Senior - 40% Off): <code>amit</code> / <code>amit123</code></li>
+                    <li>Admin: <code>admin</code> / <code>admin123</code></li>
+                </ul>
+                <div style="margin-top:1rem; text-align:center;">
+                    Don't have an account? <a href="register.html" style="color:var(--accent-orange); font-weight:600;">Create new account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentRole = 'USER';
+
+        function selectRole(role) {
+            currentRole = role;
+            const userBtn = document.getElementById('role-user-btn');
+            const adminBtn = document.getElementById('role-admin-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            const uInput = document.getElementById('login-username');
+            const pInput = document.getElementById('login-password');
+
+            if (role === 'ADMIN') {
+                adminBtn.style.background = 'var(--primary-navy)';
+                adminBtn.style.color = '#fff';
+                userBtn.style.background = '#f1f5f9';
+                userBtn.style.color = 'var(--text-main)';
+                submitBtn.textContent = 'Login as Administrator';
+                uInput.value = 'admin';
+                pInput.value = 'admin123';
+            } else {
+                userBtn.style.background = 'var(--primary-navy)';
+                userBtn.style.color = '#fff';
+                adminBtn.style.background = '#f1f5f9';
+                adminBtn.style.color = 'var(--text-main)';
+                submitBtn.textContent = 'Login as Passenger';
+                uInput.value = 'rahul';
+                pInput.value = 'rahul123';
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            try {
+                const res = await api('/auth/login', 'POST', { username, password, role: currentRole });
+                if (res.success) {
+                    if (res.role === 'ADMIN') {
+                        setCurrentAdmin(res.admin);
+                        window.location.href = 'admin.html';
+                    } else {
+                        setCurrentUser(res.user);
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirect = urlParams.get('redirect') || 'dashboard.html';
+                        window.location.href = redirect;
+                    }
+                }
+            } catch (err) {
+                showAlert('login-alert', err.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

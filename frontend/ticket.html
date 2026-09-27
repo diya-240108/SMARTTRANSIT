@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Ticket | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar no-print">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container">
+        <!-- PNR Lookup Bar (no-print) -->
+        <div class="card no-print" style="margin-bottom:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div style="display:flex; gap:0.75rem; align-items:center;">
+                    <label for="pnr-search" style="font-weight:700; font-size:0.95rem;">Track PNR:</label>
+                    <input type="text" id="pnr-search" class="form-control" placeholder="Enter 10-digit PNR" style="width:220px;">
+                    <button onclick="searchPnr()" class="btn btn-navy btn-sm">Retrieve</button>
+                </div>
+                <div style="display:flex; gap:0.75rem;">
+                    <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Print Ticket</button>
+                    <button id="cancel-btn" onclick="openCancelModal()" class="btn btn-danger btn-sm" style="display:none;">Cancel Ticket</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="ticket-alert" class="no-print"></div>
+
+        <!-- Rendered E-Ticket Card -->
+        <div id="eticket-container">
+            <div class="card" style="text-align:center; padding:3rem;">
+                Loading E-Ticket details...
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer no-print">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentTicket = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavbar('bookings');
+            const params = new URLSearchParams(window.location.search);
+            const pnr = params.get('pnr');
+            if (pnr) {
+                document.getElementById('pnr-search').value = pnr;
+                fetchTicket(pnr);
+            } else {
+                document.getElementById('eticket-container').innerHTML = `
+                    <div class="card" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                        Please enter a valid 10-digit PNR number above to retrieve the E-Ticket.
+                    </div>
+                `;
+            }
+        });
+
+        function searchPnr() {
+            const pnr = document.getElementById('pnr-search').value.trim();
+            if (!pnr) {
+                alert("Please enter a valid PNR number.");
+                return;
+            }
+            window.location.href = `ticket.html?pnr=${encodeURIComponent(pnr)}`;
+        }
+
+        async function fetchTicket(pnr) {
+            try {
+                const res = await api(`/bookings/ticket?pnr=${encodeURIComponent(pnr)}`);
+                if (res.success && res.ticket) {
+                    currentTicket = res.ticket;
+                    renderETicket(res.ticket, res.asciiTicket);
+                }
+            } catch (err) {
+                document.getElementById('eticket-container').innerHTML = `
+                    <div class="card" style="text-align:center; padding:2.5rem;">
+                        <h3 style="color:var(--danger);">Ticket Not Found</h3>
+                        <p style="color:var(--text-muted); margin-top:0.5rem;">${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderETicket(t, ascii) {
+            const statusClass = t.status === 'CONFIRMED' ? 'badge-confirmed' : (t.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const user = getCurrentUser();
+            const admin = getCurrentAdmin();
+
+            if (cancelBtn && t.status !== 'CANCELLED' && (admin || (user && user.userId === t.userId))) {
+                cancelBtn.style.display = 'inline-block';
+            } else if (cancelBtn) {
+                cancelBtn.style.display = 'none';
+            }
+
+            let passRows = '';
+            t.passengers.forEach((p, idx) => {
+                const seatStr = (p.status === 'WAITLIST' || p.coach === 'WL' || p.seatNumber <= 0) 
+                    ? `<span class="badge badge-waitlist">WL</span>` 
+                    : `<strong>${p.coach}-${p.seatNumber}</strong> <span style="font-size:0.8rem; color:var(--text-muted);">(${p.allocatedBerth})</span>`;
+
+                passRows += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.age} / ${p.gender}</td>
+                        <td>${p.category}</td>
+                        <td>${seatStr}</td>
+                        <td><span class="badge ${p.status === 'CONFIRMED' ? 'badge-confirmed' : (p.status === 'WAITLIST' ? 'badge-waitlist' : 'badge-cancelled')}">${p.status}</span></td>
+                        <td>₹${p.fare.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('eticket-container').innerHTML = `
+                <div class="eticket-wrapper">
+                    <!-- Ticket Header -->
+                    <div class="eticket-header">
+                        <div>
+                            <span style="font-size:0.75rem; letter-spacing:1px; color:#94a3b8; text-transform:uppercase;">SMART TRANSIT SYSTEM • ELECTRONIC RESERVATION SLIP</span>
+                            <h2 style="font-size:1.4rem; font-weight:800; margin-top:0.2rem;">${t.trainNumber} - ${t.trainName}</h2>
+                        </div>
+                        <div style="text-align:right;">
+                            <span class="badge ${statusClass}" style="font-size:0.9rem; padding:0.4rem 0.8rem;">${t.status}</span>
+                        </div>
+                    </div>
+
+                    <!-- Ticket Body -->
+                    <div class="eticket-body">
+                        <div class="eticket-row">
+                            <div class="eticket-col">
+                                <div class="eticket-label">PNR Number</div>
+                                <div class="eticket-value" style="color:var(--accent-orange); font-size:1.35rem; font-family:monospace;">${t.pnr}</div>
+                            </div>
+                            <div class="eticket-col">
+                                <div class="eticket-label">Travel Class</div>
+                                <div class="eticket-value">${t.travelClass}</div>
+                            </div>
+                            <div class="eticket-col">
+                                <div class="eticket-label">Journey Date</div>
+                                <div class="eticket-value">${t.journeyDate}</div>
+                            </div>
+                            <div class="eticket-col">
+                                <div class="eticket-label">Train Status</div>
+                                <div class="eticket-value" style="font-size:0.95rem; color:var(--primary-navy);">${t.trainStatus}</div>
+                            </div>
+                        </div>
+
+                        <!-- Route Timeline inside Ticket -->
+                        <div class="journey-timeline" style="margin: 1rem 0;">
+                            <div class="timeline-station">
+                                <div class="time">${t.departureTime}</div>
+                                <div class="city">${t.source}</div>
+                            </div>
+                            <div class="timeline-arrow">
+                                <span class="duration">Direct Express</span>
+                                <div class="line"></div>
+                            </div>
+                            <div class="timeline-station">
+                                <div class="time">${t.arrivalTime}</div>
+                                <div class="city">${t.destination}</div>
+                            </div>
+                        </div>
+
+                        <!-- Passengers Table -->
+                        <div style="margin-top:1.25rem;">
+                            <div style="font-weight:700; font-size:0.9rem; color:var(--primary-navy); margin-bottom:0.5rem; text-transform:uppercase;">Passenger Details & Allocated Berths</div>
+                            <div class="table-responsive">
+                                <table class="styled-table" style="font-size:0.9rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Passenger</th>
+                                            <th>Age/Sex</th>
+                                            <th>Category</th>
+                                            <th>Coach-Seat</th>
+                                            <th>Status</th>
+                                            <th>Fare</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${passRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Fare Summary -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; padding-top:1rem; border-top:2px solid var(--border-light);">
+                            <div style="font-size:0.85rem; color:var(--text-muted);">
+                                Booked On: <strong>${t.bookingTime || 'Recorded in System'}</strong>
+                            </div>
+                            <div style="text-align:right;">
+                                <span style="font-size:0.85rem; color:var(--text-muted);">Total Fare Paid: </span>
+                                <strong style="font-size:1.35rem; color:var(--primary-navy);">₹${t.totalFare.toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Requirement 11 ASCII Representation Box -->
+                <div class="no-print" style="max-width:680px; margin: 1.5rem auto 0 auto;">
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-muted); margin-bottom:0.35rem;">
+                        Terminal / ASCII Ticket Representation:
+                    </div>
+                    <div class="ascii-ticket-box">${ascii || ''}</div>
+                </div>
+            `;
+        }
+
+        async function openCancelModal() {
+            if (!currentTicket) return;
+            const confirmMsg = `Are you sure you want to cancel PNR ${currentTicket.pnr}?\n\nOriginal Fare: ₹${currentTicket.totalFare.toFixed(2)}\nCancellation Fee: ₹100.00\nNet Refund: ₹${Math.max(0, currentTicket.totalFare - 100).toFixed(2)}\n\nWaitlisted passengers will be automatically promoted to the released seat(s).`;
+            
+            if (!confirm(confirmMsg)) return;
+
+            const user = getCurrentUser();
+            const admin = getCurrentAdmin();
+            const requestingId = admin ? admin.adminId : user.userId;
+
+            try {
+                const res = await api('/bookings/cancel', 'POST', {
+                    userId: requestingId,
+                    pnr: currentTicket.pnr,
+                    isAdmin: !!admin
+                });
+
+                if (res.success) {
+                    let promoMsg = '';
+                    if (res.promotions && res.promotions.length > 0) {
+                        res.promotions.forEach(p => {
+                            promoMsg += `\n⚡ Waitlist #${p.waitlistNumber} PROMOTED: Passenger ${p.passengerName} -> Seat ${p.coach}-${p.seatNumber}!`;
+                        });
+                    }
+                    alert(`Ticket Cancelled Successfully!\n\nRefund: ₹${res.refundAmount.toFixed(2)}${promoMsg}`);
+                    fetchTicket(currentTicket.pnr);
+                }
+            } catch (err) {
+                showAlert('ticket-alert', err.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

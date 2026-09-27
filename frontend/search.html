@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Trains | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right"></ul>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Train Search & Seat Availability</h1>
+                <p class="page-desc">Search trains across corridors and check live class-wise seat availability</p>
+            </div>
+        </div>
+
+        <div id="search-alert"></div>
+
+        <!-- Search Form Card -->
+        <div class="card">
+            <form id="train-search-form" onsubmit="onSearchSubmit(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="src-input">From Station</label>
+                        <input type="text" id="src-input" class="form-control" placeholder="e.g. Chennai" required value="Chennai">
+                    </div>
+                    <div class="form-group">
+                        <label for="dst-input">To Station</label>
+                        <input type="text" id="dst-input" class="form-control" placeholder="e.g. Coimbatore" required value="Coimbatore">
+                    </div>
+                    <div class="form-group">
+                        <label for="date-input">Journey Date</label>
+                        <input type="date" id="date-input" class="form-control" value="2026-09-25">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                    <span style="font-size:0.85rem; color:var(--text-muted);">
+                        💡 Tip: Search <strong>Chennai</strong> to <strong>Coimbatore</strong> on <strong>2026-09-25</strong> to demo Train 12604 waitlisting.
+                    </span>
+                    <button type="submit" class="btn btn-primary">Find Trains</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Smart Alternatives Container (Populated if full/cancelled) -->
+        <div id="smart-alternatives"></div>
+
+        <!-- Results Container -->
+        <div id="search-results">
+            <div class="card" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                Submit the search form above to view scheduled trains and class availability.
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setupNavbar('search');
+
+            // Pre-fill from URL parameters if redirected from quick search
+            const params = new URLSearchParams(window.location.search);
+            const s = params.get('source');
+            const d = params.get('destination');
+            const dt = params.get('date');
+
+            if (s) document.getElementById('src-input').value = s;
+            if (d) document.getElementById('dst-input').value = d;
+            if (dt) document.getElementById('date-input').value = dt;
+
+            if (s && d) {
+                executeTrainSearch(s, d, dt);
+            }
+        });
+
+        function onSearchSubmit(e) {
+            e.preventDefault();
+            const s = document.getElementById('src-input').value.trim();
+            const d = document.getElementById('dst-input').value.trim();
+            const dt = document.getElementById('date-input').value.trim();
+            executeTrainSearch(s, d, dt);
+        }
+    </script>
+</body>
+</html>

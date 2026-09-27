@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Account | Smart Transit Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <div class="brand-icon">ST</div>
+            <div>
+                <span class="brand-title">SMART TRANSIT</span>
+                <span class="brand-sub">Indian Railway Reservation System</span>
+            </div>
+        </a>
+        <ul class="nav-links" id="nav-right">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="search.html">Search Trains</a></li>
+            <li><a href="login.html" class="btn btn-outline btn-sm" style="color:#fff; border-color:#94a3b8;">Login</a></li>
+        </ul>
+    </nav>
+
+    <div class="container" style="max-width: 580px; margin-top: 2rem;">
+        <div class="card">
+            <h2 style="color:var(--primary-navy); font-size:1.5rem; text-align:center; margin-bottom:0.5rem;">Create Passenger Account</h2>
+            <p style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-bottom:1.5rem;">
+                Register to book train tickets, track live PNR status, and receive journey alerts
+            </p>
+
+            <div id="reg-alert"></div>
+
+            <form id="reg-form" onsubmit="handleRegister(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="reg-fullname">Full Name</label>
+                        <input type="text" id="reg-fullname" class="form-control" placeholder="e.g. Diya Sundaram" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <input type="text" id="reg-username" class="form-control" placeholder="Choose a unique username" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="reg-email">Email Address</label>
+                        <input type="email" id="reg-email" class="form-control" placeholder="name@example.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-phone">Phone Number (10 Digits)</label>
+                        <input type="tel" id="reg-phone" class="form-control" placeholder="e.g. 9876543210" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="reg-password">Password (Min 4 chars)</label>
+                        <input type="password" id="reg-password" class="form-control" placeholder="Create secure password" required minlength="4">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-category">Concession Category</label>
+                        <select id="reg-category" class="form-control">
+                            <option value="NORMAL">Normal / General Passenger</option>
+                            <option value="STUDENT">Student (25% Fare Discount)</option>
+                            <option value="SENIOR">Senior Citizen (40% Fare Discount)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc; border:1px solid var(--border-light); border-radius:var(--radius-sm); padding:0.85rem; font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;">
+                    ℹ️ <strong>Concession Note:</strong> Students receive 25% discount and Senior Citizens (60+ yrs) receive 40% discount automatically calculated on base train fares.
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%; padding:0.75rem;">
+                    Complete Registration
+                </button>
+            </form>
+
+            <div style="margin-top:1.25rem; text-align:center; font-size:0.9rem; color:var(--text-muted);">
+                Already have an account? <a href="login.html" style="color:var(--accent-orange); font-weight:600;">Sign in here</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Smart Transit Management System | Academic Demonstration Project</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+    <script>
+        async function handleRegister(e) {
+            e.preventDefault();
+            const fullName = document.getElementById('reg-fullname').value.trim();
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const category = document.getElementById('reg-category').value;
+
+            try {
+                const res = await api('/auth/register', 'POST', {
+                    fullName, username, email, phone, password, category
+                });
+
+                if (res.success) {
+                    showAlert('reg-alert', `Account created successfully! Welcome ${res.user.fullName}. Redirecting to login...`, 'success');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1800);
+                }
+            } catch (err) {
+                showAlert('reg-alert', err.message, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>
